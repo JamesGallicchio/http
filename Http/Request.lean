@@ -1,44 +1,65 @@
-import Http.Types
+/-  Copyright (C) 2023 The Http library contributors.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-/
+
 import Http.Headers
 import Http.URI
-import Socket
+import Http.Version
 
-namespace Http.Request
+namespace Http
 
-open Socket
+inductive Method
+  | GET
+  | HEAD
+  | POST
+  | PUT
+  | DELETE
+  | CONNECT
+  | OPTIONS
+  | TRACE
+  | PATCH
 
-def init (url : URI) (method : Method) (headers : Headers) (body : Option String) : Request :=
-  {
-    url,
-    method,
-    headers,
-    body,
-    protocol := url.scheme.asProtocol
-  }
+namespace Method
 
-def toRequestString (r : Request) : String :=
-  s!"{r.method} {r.url.path} {r.protocol.toString}" ++ CRLF ++
+def toString : Method → String
+  | GET     => "GET"
+  | HEAD    => "HEAD"
+  | POST    => "POST"
+  | PUT     => "PUT"
+  | DELETE  => "DELETE"
+  | CONNECT => "CONNECT"
+  | OPTIONS => "OPTIONS"
+  | TRACE   => "TRACE"
+  | PATCH   => "PATCH"
+
+instance : ToString Method := ⟨toString⟩
+
+end Method
+
+structure Request (T) where
+  method : Method
+  url : URI
+  version : Version
+  headers : Headers
+  body : T
+
+namespace Request
+
+/- TODO: use ToBytes typeclass or similar. -/
+def toRequestString [ToString T] (r : Request T) : String :=
+  s!"{r.method} {r.url.path} {r.version}" ++ CRLF ++
   r.headers.toRequestFormat ++
   CRLF ++ CRLF ++
-  if let some body := r.body then body else ""
-  
-open Protocol in
-def send (request : Request) : IO ByteArray := do
-  let defaultPort :=
-    match request.protocol with
-    | http _ => 80
-    | https _ => 443
-    | _ => 80
-  let remoteAddr ← SockAddr.mk
-    (host := request.url.host)
-    (port := request.url.port.getD defaultPort |> ToString.toString)
-    (family := .inet)
-    (type := .stream)
-  let socket ← Socket.mk .inet .stream
-  socket.connect remoteAddr
-  let strSend := request.toRequestString
-  discard $ socket.send strSend.toUTF8
-  let bytesRecv ← socket.recv 5000
-  return bytesRecv
-
-end Http.Request
+  toString r.body

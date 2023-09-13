@@ -14,33 +14,26 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -/
 
-import Http.Status
-import Http.Version
-import Http.Headers
-import Http.Parser
+/-- A case-insensitive string.
 
-namespace Http
+This should be implemented as a quotation, but since
+`String` has very few provable results it is not immediately
+feasible.
 
-/-- A response to an HTTP request. -/
-structure Response (T) where
-  version : Version
-  status : StatusCode
-  headers : Headers
-  body : T
+TODO: modify to work with `ByteArray`s directly. -/
+structure CaseInsString where
+  val : String
+  hval : ∃ s1 : String, val = s1.toLower
+deriving DecidableEq, Hashable, Repr
 
-end Http open Parser namespace Http
-open Http.Parser
+namespace CaseInsString
 
-def Response.parse (p : Parser T) : Parser (Response T) := do
-  let version ← Version.parse
-  dropMany1 (tokenFilter (·.isWhitespace))
-  let status ← StatusCode.parse
-  let _ ← dropUntil (p := anyToken) (stop := token '\n')
-  let headers ← Headers.parse
-  let body ← p
-  return {
-    version
-    status
-    headers
-    body := body
-  }
+def ofString (s : String) : CaseInsString := ⟨s.toLower, s, rfl⟩
+
+variable (s : CaseInsString)
+
+def toLower := s.val
+def length := s.val.length
+def get := s.val.get
+
+instance : ToString CaseInsString := ⟨toLower⟩

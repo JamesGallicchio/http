@@ -14,33 +14,10 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -/
 
-import Http.Status
-import Http.Version
-import Http.Headers
-import Http.Parser
+import Lean
+import Std
 
-namespace Http
+def Lean.mkDocComment (s : String) :=
+  mkNode ``Parser.Command.docComment #[mkAtom "/--", mkAtom (s ++ "-/")]
 
-/-- A response to an HTTP request. -/
-structure Response (T) where
-  version : Version
-  status : StatusCode
-  headers : Headers
-  body : T
-
-end Http open Parser namespace Http
-open Http.Parser
-
-def Response.parse (p : Parser T) : Parser (Response T) := do
-  let version ← Version.parse
-  dropMany1 (tokenFilter (·.isWhitespace))
-  let status ← StatusCode.parse
-  let _ ← dropUntil (p := anyToken) (stop := token '\n')
-  let headers ← Headers.parse
-  let body ← p
-  return {
-    version
-    status
-    headers
-    body := body
-  }
+@[inline] def Http.CRLF : String := "\r\n"

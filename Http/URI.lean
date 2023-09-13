@@ -1,121 +1,172 @@
-import Lean
-import Http.Parsec
-import Http.Types
-import Socket
+/-  Copyright (C) 2023 The Http library contributors.
 
-open Std Parsec Socket
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-/
+
+import Lean
+import Std
+import Http.Parser
+import Http.CaseInsString
 
 namespace Http
 
 namespace URI
 
-private def toString (uri : URI) : String :=
-  s!"{uri.scheme}://"
-  ++ if let some user := uri.userInfo then s!"{user}@"
-  else ""
-  ++ s!"{uri.host}"
-  ++ if let some port := uri.port then s!":{port}"
-  else ""
-  ++ s!"{uri.path}"
-  ++ if let some query := uri.query then s!"?{query}"
-  else ""
-  ++ if let some fragment := uri.fragment then s!"#{fragment}"
-  else ""
+structure Scheme where
+  val : CaseInsString
+  hlen : val.length > 0
+  hfirst : val.get 0 |>.isAlpha
+deriving DecidableEq
 
-instance : ToString URI := ⟨toString⟩
+namespace Scheme
 
-namespace Parser
+def ofString (s : String) : Option Scheme :=
+  let s := .ofString s
+  if h : _ ∧ _ then
+    some {
+      val := s
+      hlen := h.1
+      hfirst := h.2
+    }
+  else
+    none
 
-def schemeParser : Parsec Scheme :=
-  Scheme.mk <$> manyChars (asciiLetter <|> oneOf ['+', '-', '.'])
+instance : Inhabited Scheme := ⟨ofString "a" |>.get (by simp only)⟩
 
-def hostName : Parsec Hostname := do
-  let name := many1Chars (asciiLetter <|> digit <|> pchar '-')
-  let start := name ++ pstring "."
-  many1Strings start ++ name
+def HTTP := ofString "http" |>.get!
+def HTTPS := ofString "https" |>.get!
 
-def parseDigit! (c : Char) : Nat :=
-  match c with
-  | '0' => 0
-  | '1' => 1
-  | '2' => 2
-  | '3' => 3
-  | '4' => 4
-  | '5' => 5
-  | '6' => 6
-  | '7' => 7
-  | '8' => 8
-  | '9' => 9
-  | _ => panic! "Not a digit"
+instance : Inhabited Scheme := ⟨HTTP⟩
+end Scheme
 
-def parseUInt16 : Parsec UInt16 := do
-  let as ← many1 digit
-  let mut n := 0
-  for (i, c) in as.toList.reverse.enum do
-    let d := parseDigit! c
-    n := n + d * 10 ^ i
-  return n.toUInt16
+namespace Authority
 
-def maybePort : Parsec (Option UInt16) := do
-  option $ parseUInt16
+/-- Example: http://user:pass@example.com
 
-def psegment : Parsec String :=
-  many1Chars <| oneOf ['-', '%', '_', '+', '$', '.', ':', '*', '@' ] <|> asciiLetter <|> digit
+TODO: invariants about char set / pct-encoding
+-/
+structure UserInfo where
+  username : String
+  password : Option String
 
-partial def pathParser : Parsec Path := do
-  let rec comp : Parsec Path := do
-    if ← test <| pstring "/" then
-      let part ← psegment
-      let rest ← comp
-      pure <| part :: rest
-    else
-      pure []
-  comp
+instance : ToString UserInfo where
+  toString ui := s!"{ui.username}" ++ (ui.password.map (s!":{·}") |>.getD "")
 
-def userInfoParser : Parsec UserInfo := do
-  let username ← many1Chars <| asciiLetter <|> digit
-  let password ← option do skipChar ':'; many1Chars <| asciiLetter <|> digit
-  skipChar '@'
-  return { username, password : UserInfo }
+def Hostname := String
+deriving ToString
 
-partial def queryParser : Parsec Query := do
-  skipChar '?'
-  let rec entries := do
-    let k ← psegment
-    skipChar '='
-    let v ← psegment
-    if ← test $ skipChar '&' then
-      pure <| (k, v) :: (← entries)
-    else
-      pure [(k, v)]
-  entries
+def Port := UInt16
+deriving DecidableEq, Inhabited, ToString
 
-partial def fragmentParser : Parsec Fragment := do
-  skipChar '#'
-  let rec entries := do
-    let k ← psegment
-    skipChar '='
-    let v ← psegment
-    if ← test $ skipChar '&' then
-      pure <| (k, v) :: (← entries)
-    else
-      pure [(k, v)]
-  entries
+end Authority
 
-def url : Parsec URI := do  
-  let scheme ← schemeParser
-  skipString "://"
-  let userInfo ← option userInfoParser
-  let host ← hostName
-  let optPort ← maybePort
-  let path ← pathParser
-  let query ← option queryParser
-  let fragment ← option fragmentParser
-  return { scheme, host, port := optPort, path, query, fragment, userInfo : URI }
+open Authority in
+structure Authority where
+  ui : Option UserInfo
+  host : Hostname
+  port : Option Port
 
-end Parser
+def Path := String
+deriving ToString
 
-def parse (s : String) : Except String URI := Parser.url.parse s
+def Query := String
+deriving ToString
+
+def Fragment := String
+deriving ToString
 
 end URI
-end Http
+
+open URI
+
+structure URI where
+  scheme : Scheme
+  auth : Authority
+  path : Path
+  query : Option Query
+  fragment : Option Fragment
+
+end Http open Parser
+namespace Http
+
+open Http.Parser
+
+/- TODO: These parsers are almost certainly not good enough.
+
+E.g. percent-encoding is not taken into account.
+
+Unfortunately the standard seems to be https://url.spec.whatwg.org/#urls
+which takes hundreds of lines of text to explain how to parse
+URLs.
+-/
+
+namespace URI
+
+def Scheme.parse : Parser Scheme := do
+  let str ← capture <| do
+    let _ ← tokenFilter (·.isAlpha)
+    let _ ← dropMany <| tokenFilter (fun c => c.isAlphanum || c ∈ ['+', '-', '.'])
+  return Scheme.ofString str.toString |>.get!
+
+def Authority.UserInfo.parse : Parser Authority.UserInfo := do
+  let user : Substring ←
+    capture <| dropMany <| tokenFilter (·.isAlphanum)
+  let pword : Option Substring ←
+    (token ':' *> some <$> (capture <| dropMany <| tokenFilter (·.isAlphanum)))
+    <|> pure none
+  let _ ← token '@'
+  return ⟨user.toString, pword.map (·.toString)⟩
+
+def Authority.Hostname.parse : Parser Authority.Hostname := do
+  let str ← capture <| dropMany <| tokenFilter (fun c => c.isAlphanum || c = '-' || c = '.')
+  return str.toString
+
+def Authority.Port.parse : Parser Authority.Port := do
+  let _ ← token ':'
+  let digs ← capture <| dropMany <| tokenFilter (·.isDigit)
+  let num := digs.toString.toNat!
+  if h:num < UInt16.size then
+    return ⟨num, h⟩
+  else
+    throwUnexpectedWithMessage none s!"port does not fit in a uint16: {num}"
+
+def Authority.parse : Parser Authority := do
+  let ui ← option? UserInfo.parse
+  let host ← Hostname.parse
+  let port ← option? Port.parse
+  return { ui, host, port }
+
+def Path.parse : Parser Path := do
+  let str ← capture <| dropMany <|
+    tokenFilter (fun c => c != '?' && c != '#')
+  return str.toString
+
+def Query.parse : Parser Query := do
+  let _ ← token '?'
+  let str ← capture <| dropMany <| tokenFilter (fun c => c != '#')
+  return str.toString 
+
+def Fragment.parse : Parser Fragment := do
+  let _ ← token '#'
+  let str ← capture <| dropMany anyToken
+  return str.toString
+
+def parse : Parser URI := do  
+  let scheme ← Scheme.parse
+  let _ ← token ':'; let _ ← token '/'; let _ ← token '/'
+  let auth ← Authority.parse
+  let path ← Path.parse
+  let query ← option? Query.parse
+  let fragment ← option? Fragment.parse
+  return { scheme, auth, path, query, fragment }
