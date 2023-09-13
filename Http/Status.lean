@@ -85,9 +85,9 @@ genStatusCodes! #[
   (101, `SWITCHING_PROTOCOLS            , "Switching Protocols"            , "[RFC7231, Section 6.2.2](https://tools.ietf.org/html/rfc7231#section-6.2.2)"),
   (102, `PROCESSING                     , "Processing"                     , "[RFC2518](https://tools.ietf.org/html/rfc2518)"),
 
-  (200, `OK                             , "OK"                             ,     "[RFC7231, Section 6.3.1](https://tools.ietf.org/html/rfc7231#section-6.3.1)"),
-  (201, `CREATED                        , "Created"                        ,    "[RFC7231, Section 6.3.2](https://tools.ietf.org/html/rfc7231#section-6.3.2)"),
-  (202, `ACCEPTED                       , "Accepted"                       ,     "[RFC7231, Section 6.3.3](https://tools.ietf.org/html/rfc7231#section-6.3.3)"),
+  (200, `OK                             , "OK"                             , "[RFC7231, Section 6.3.1](https://tools.ietf.org/html/rfc7231#section-6.3.1)"),
+  (201, `CREATED                        , "Created"                        , "[RFC7231, Section 6.3.2](https://tools.ietf.org/html/rfc7231#section-6.3.2)"),
+  (202, `ACCEPTED                       , "Accepted"                       , "[RFC7231, Section 6.3.3](https://tools.ietf.org/html/rfc7231#section-6.3.3)"),
   (203, `NON_AUTHORITATIVE_INFORMATION  , "Non Authoritative Information"  , "[RFC7231, Section 6.3.4](https://tools.ietf.org/html/rfc7231#section-6.3.4)"),
   (204, `NO_CONTENT                     , "No Content"                     , "[RFC7231, Section 6.3.5](https://tools.ietf.org/html/rfc7231#section-6.3.5)"),
   (205, `RESET_CONTENT                  , "Reset Content"                  , "[RFC7231, Section 6.3.6](https://tools.ietf.org/html/rfc7231#section-6.3.6)"),
