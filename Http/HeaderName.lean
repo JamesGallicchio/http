@@ -904,6 +904,8 @@ end
 
 namespace Standard
 
+-- TODO: check if trie is faster than whatever leanc+llvm produce
+-- if you just pattern match on all the strings
 def trie := all.foldl (fun a b => a.insert b.toHeaderString b) (Lean.Parser.Trie.empty)
 def parse := trie.find?
 
