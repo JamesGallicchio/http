@@ -56,6 +56,7 @@ def parseHeader : Parser (HeaderName × String) := do
   return (key, value.toString)
 
 def parse : Parser Headers := do
-  let headers ← Array.foldl (λ map (k, v) => map.add k v) .empty <$> (Parser.takeMany parseHeader)
+  let headers ← Array.foldl (λ map (k, v) => map.add k v) .empty <$>
+    (Parser.takeMany parseHeader)
   ws
   return headers

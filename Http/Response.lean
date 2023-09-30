@@ -28,10 +28,18 @@ structure Response (T) where
   headers : Headers
   body : T
 
-end Http open Parser namespace Http
+end Http open Parser namespace Http.Response
 open Http.Parser
 
-def Response.parse (p : Parser T) : Parser (Response T) := do
+def toString [ToString T] (r : Response T) : String :=
+  s!"{r.version} {r.status.val}" ++
+    (r.status.canonicalReason.map (" " ++ ·) |>.getD "") ++
+    CRLF ++
+    r.headers.toRequestFormat ++
+    CRLF ++ CRLF ++
+    ToString.toString r.body
+
+def parse (p : Parser T) : Parser (Response T) := do
   let version ← Version.parse
   dropMany1 (tokenFilter (·.isWhitespace))
   let status ← StatusCode.parse
