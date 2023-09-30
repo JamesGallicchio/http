@@ -30,6 +30,7 @@ namespace CaseInsString
 
 def ofString (s : String) : CaseInsString := ⟨s.toLower, s, rfl⟩
 
+instance : Inhabited CaseInsString := ⟨ofString ""⟩
 variable (s : CaseInsString)
 
 def toLower := s.val

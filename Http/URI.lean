@@ -48,6 +48,7 @@ def HTTP := ofString "http" |>.get!
 def HTTPS := ofString "https" |>.get!
 
 instance : Inhabited Scheme := ⟨HTTP⟩
+instance : ToString Scheme := ⟨(·.val.val)⟩
 end Scheme
 
 namespace Authority
@@ -59,12 +60,13 @@ TODO: invariants about char set / pct-encoding
 structure UserInfo where
   username : String
   password : Option String
+deriving Inhabited
 
 instance : ToString UserInfo where
   toString ui := s!"{ui.username}" ++ (ui.password.map (s!":{·}") |>.getD "")
 
 def Hostname := String
-deriving ToString
+deriving Inhabited, ToString
 
 def Port := UInt16
 deriving DecidableEq, Inhabited, ToString
@@ -76,31 +78,53 @@ structure Authority where
   ui : Option UserInfo
   host : Hostname
   port : Option Port
+deriving Inhabited
+
+instance : ToString Authority where
+  toString | {ui,host,port} =>
+              s!"{
+                ui.map (toString · ++ "@") |>.getD ""
+              }{host}{
+                port.map (":" ++ toString ·) |>.getD ""
+              }"
 
 def Path := String
-deriving ToString
+deriving Inhabited, ToString
 
 def Query := String
-deriving ToString
+deriving Inhabited, ToString
 
 def Fragment := String
-deriving ToString
+deriving Inhabited, ToString
 
 end URI
 
 open URI
 
 structure URI where
-  scheme : Scheme
-  auth : Authority
+  scheme : Option Scheme
+  auth : Option Authority
   path : Path
   query : Option Query
   fragment : Option Fragment
+deriving Inhabited
 
 end Http open Parser
 namespace Http
 
 open Http.Parser
+
+namespace URI
+
+nonrec def toString : URI → String
+| {scheme, auth, path, query, fragment} =>
+  (scheme.map (toString · ++ "://") |>.getD "")
+  ++ (auth.map toString |>.getD "")
+  ++ toString path
+  ++ (query.map ("?" ++ toString ·) |>.getD "")
+  ++ (fragment.map ("#" ++ toString ·) |>.getD "")
+
+instance : ToString URI := ⟨toString⟩
 
 /- TODO: These parsers are almost certainly not good enough.
 
@@ -110,8 +134,6 @@ Unfortunately the standard seems to be https://url.spec.whatwg.org/#urls
 which takes hundreds of lines of text to explain how to parse
 URLs.
 -/
-
-namespace URI
 
 def Scheme.parse : Parser Scheme := do
   let str ← capture <| do
@@ -163,9 +185,11 @@ def Fragment.parse : Parser Fragment := do
   return str.toString
 
 def parse : Parser URI := do  
-  let scheme ← Scheme.parse
-  let _ ← token ':'; let _ ← token '/'; let _ ← token '/'
-  let auth ← Authority.parse
+  let scheme ← option? do
+    let res ← Scheme.parse
+    let _ ← tokenArray #[':', '/', '/']
+    pure res
+  let auth ← option? Authority.parse
   let path ← Path.parse
   let query ← option? Query.parse
   let fragment ← option? Fragment.parse
