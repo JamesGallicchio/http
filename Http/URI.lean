@@ -169,9 +169,40 @@ def Authority.parse : Parser Authority := do
   let port ← option? Port.parse
   return { ui, host, port }
 
+def Path.allowedSegChars : ByteArray :=
+  .mk <| Array.ofFn (fun (i : Fin 256) =>
+    let c : Char := Char.ofNat i
+    if
+      'A' ≤ c && c ≤ 'Z' ||
+      'a' ≤ c && c ≤ 'z' ||
+      '0' ≤ c && c ≤ '9' ||
+      c ∈ ['-', '.', '_', '~', '!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '=', ':', '@']
+    then
+      1
+    else 0
+  )
+
+@[simp] theorem Path.allowedSegChars_size : Path.allowedSegChars.size = 256 := by
+  simp [ByteArray.size, allowedSegChars]
+
+def Path.pctEnc : Parser Char := do
+  let _ ← token '%'
+  let c1 ← tokenFilter Unicode.isHexDigit
+  let c2 ← tokenFilter Unicode.isHexDigit
+  let byte := (Unicode.getHexDigit? c1).get!.val * 16 + (Unicode.getHexDigit? c2).get!.val
+  return Char.ofNat byte
+
 def Path.parse : Parser Path := do
   let str ← capture <| dropMany <|
-    tokenFilter (fun c => c != '?' && c != '#')
+    (tokenFilter (fun c => c = '/' ||
+      if h : c.toNat < 256 then
+        have := by rw [←Path.allowedSegChars_size] at h; exact h
+        Path.allowedSegChars[c.toNat] > 0
+      else
+        false
+    )
+    <|>
+    Path.pctEnc)
   return str.toString
 
 def Query.parse : Parser Query := do
