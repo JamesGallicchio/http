@@ -32,7 +32,8 @@ def Headers := Std.HashMap HeaderName (List String)
 namespace Headers
 
 def toRequestFormat (h : Headers) : String :=
-  h.fold (λ acc a b => acc ++ s!"{a.toHeaderString}: {b}" ++ CRLF) ""
+  h.fold (λ acc a b =>
+    b.foldl (λ acc b => acc ++ s!"{a.toHeaderString}: {b}" ++ CRLF) acc) ""
 
 def empty : Headers := .empty
 
