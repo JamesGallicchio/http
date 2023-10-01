@@ -118,7 +118,7 @@ namespace Request
 def toRequestString [ToString T] (r : Request T) : String :=
   s!"{r.method} {r.url.path} {r.version}" ++ CRLF ++
   r.headers.toRequestFormat ++
-  CRLF ++ CRLF ++
+  CRLF ++
   toString r.body
 
 def parse (p : Parser T) : Parser (Request T) := do
