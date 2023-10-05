@@ -46,6 +46,18 @@ def toString : Method → String
 
 instance : ToString Method := ⟨toString⟩
 
+instance : Lean.Quote Method where
+  quote
+    | GET     => Lean.mkCIdent ``GET
+    | HEAD    => Lean.mkCIdent ``HEAD
+    | POST    => Lean.mkCIdent ``POST
+    | PUT     => Lean.mkCIdent ``PUT
+    | DELETE  => Lean.mkCIdent ``DELETE
+    | CONNECT => Lean.mkCIdent ``CONNECT
+    | OPTIONS => Lean.mkCIdent ``OPTIONS
+    | TRACE   => Lean.mkCIdent ``TRACE
+    | PATCH   => Lean.mkCIdent ``PATCH
+
 def parse : Parser Method := do
   match ← Parser.anyToken with
   | 'C' =>
@@ -116,7 +128,7 @@ namespace Request
 
 /- TODO: use ToBytes typeclass or similar. -/
 def toRequestString [ToString T] (r : Request T) : String :=
-  s!"{r.method} {r.url.path} {r.version}" ++ CRLF ++
+  s!"{r.method} {r.url} {r.version}" ++ CRLF ++
   r.headers.toRequestFormat ++
   CRLF ++
   toString r.body

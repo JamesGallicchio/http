@@ -88,8 +88,10 @@ instance : ToString Authority where
                 port.map (":" ++ toString ·) |>.getD ""
               }"
 
-def Path := String
+def Path := Array String
 deriving Inhabited, ToString
+
+instance : Append Path := inferInstanceAs <| Append (Array _)
 
 def Query := String
 deriving Inhabited, ToString
@@ -116,11 +118,20 @@ open Http.Parser
 
 namespace URI
 
+def appendPath (p : Path) (self : URI) : URI :=
+  {self with path := self.path ++ p}
+
+def withQuery (query : Query) (self : URI) : URI :=
+  { self with query := some query }
+
+def withFragment (fragment : Fragment) (self : URI) : URI :=
+  { self with fragment := some fragment }
+
 nonrec def toString : URI → String
 | {scheme, auth, path, query, fragment} =>
   (scheme.map (toString · ++ "://") |>.getD "")
   ++ (auth.map toString |>.getD "")
-  ++ toString path
+  ++ (path.foldl (· ++ "/" ++ ·) "")
   ++ (query.map ("?" ++ toString ·) |>.getD "")
   ++ (fragment.map ("#" ++ toString ·) |>.getD "")
 
@@ -145,7 +156,7 @@ def Authority.UserInfo.parse : Parser Authority.UserInfo := do
   let user : Substring ←
     capture <| dropMany <| tokenFilter (·.isAlphanum)
   let pword : Option Substring ←
-    (token ':' *> some <$> (capture <| dropMany <| tokenFilter (·.isAlphanum)))
+    withBacktracking (token ':' *> some <$> (capture <| dropMany <| tokenFilter (·.isAlphanum)))
     <|> pure none
   let _ ← token '@'
   return ⟨user.toString, pword.map (·.toString)⟩
@@ -157,7 +168,10 @@ def Authority.Hostname.parse : Parser Authority.Hostname := do
 def Authority.Port.parse : Parser Authority.Port := do
   let _ ← token ':'
   let digs ← capture <| dropMany <| tokenFilter (·.isDigit)
-  let num := digs.toString.toNat!
+  match digs.toString.toNat? with
+  | none =>
+    throwUnexpectedWithMessage none s!"BUG: captured non-digit??: {digs}"
+  | some num =>
   if h:num < UInt16.size then
     return ⟨num, h⟩
   else
@@ -193,17 +207,19 @@ def Path.pctEnc : Parser Char := do
   return Char.ofNat byte
 
 def Path.parse : Parser Path := do
-  let str ← capture <| dropMany <|
-    (tokenFilter (fun c => c = '/' ||
-      if h : c.toNat < 256 then
-        have := by rw [←Path.allowedSegChars_size] at h; exact h
-        Path.allowedSegChars[c.toNat] > 0
-      else
-        false
+  let parts ← takeMany <|
+    token '/' *> (capture <| dropMany <|
+      (tokenFilter (fun c =>
+        if h : c.toNat < 256 then
+          have := by rw [←Path.allowedSegChars_size] at h; exact h
+          Path.allowedSegChars[c.toNat] > 0
+        else
+          false
+      )
+      <|>
+      Path.pctEnc)
     )
-    <|>
-    Path.pctEnc)
-  return str.toString
+  return parts.map (·.toString)
 
 def Query.parse : Parser Query := do
   let _ ← token '?'
@@ -216,12 +232,20 @@ def Fragment.parse : Parser Fragment := do
   return str.toString
 
 def parse : Parser URI := do  
-  let scheme ← option? do
+  let scheme ← option? <| withBacktracking do
     let res ← Scheme.parse
     let _ ← tokenArray #[':', '/', '/']
     pure res
-  let auth ← option? Authority.parse
+  let auth ← option? (withBacktracking Authority.parse)
   let path ← Path.parse
   let query ← option? Query.parse
   let fragment ← option? Fragment.parse
   return { scheme, auth, path, query, fragment }
+
+def fromString? (s : String) : Option URI :=
+  match parse.run s with
+  | .ok ss u =>
+    if ss.isEmpty then some u else none
+  | _ => none
+
+#eval fromString? "https://api.github.com" |>.map (·.appendPath #["hi"])
