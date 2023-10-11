@@ -41,15 +41,17 @@ def toString : Version → String
 
 instance : ToString Version := ⟨toString⟩
 
-def parse : Parser Version :=
-  token 'H' *> token 'T' *> token 'T' *> token 'P' *> token '/' *>
-  tokenFilter Char.isDigit >>= fun d1 =>
-    token '.' *>
-    tokenFilter Char.isDigit >>= fun d2 =>
-      match d1.toNat - '0'.toNat, d2.toNat - '0'.toNat with
-      | 0, 9 => pure .HTTP_0_9
-      | 1, 0 => pure .HTTP_1_0
-      | 1, 1 => pure .HTTP_1_1
-      | 2, 0 => pure .HTTP_2_0
-      | 3, 0 => pure .HTTP_3_0
-      | _, _ => throwUnexpected
+def parse : Parser Version := do
+  let _ ← tokenArray #['H', 'T', 'T', 'P', '/']
+  let d1 ← tokenFilter Char.isDigit
+  let d2 ← option? (token '.' *> tokenFilter Char.isDigit)
+  match d1, d2 with
+  | '0', some '9' => pure .HTTP_0_9
+  | '1', none
+  | '1', some '0' => pure .HTTP_1_0
+  | '1', '1' => pure .HTTP_1_1
+  | '2', none
+  | '2', some '0' => pure .HTTP_2_0
+  | '3', none
+  | '3', some '0' => pure .HTTP_3_0
+  | _, _ => throwUnexpected
