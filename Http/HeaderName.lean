@@ -917,10 +917,10 @@ def ofHeaderString (s : String) :=
   | some n => standard n
   | none => custom ⟨s, _, by congr⟩
 
-end Http.HeaderName open Parser open Http.Parser
+end Http.HeaderName open Parser Char open Http.Parser
 namespace Http.HeaderName
 
 def parse : Parser HeaderName := do
-  let str ← capture <| dropMany1 (tokenFilter (fun c => Char.isAlphanum c ||
+  let str ← captureString <| dropMany1 (tokenFilter (fun c => Char.isAlphanum c ||
             c ∈ ['-', '_', '!', '#', '$', '%', '&', '|', '*', '+', '.', '^', '"', '\'', '`']))
-  return HeaderName.ofHeaderString str.toString
+  return HeaderName.ofHeaderString str.2.toString

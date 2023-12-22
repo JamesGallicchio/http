@@ -31,7 +31,7 @@
   {"url": "https://github.com/fgdorais/lean4-parser",
    "type": "git",
    "subDir": null,
-   "rev": "9af869c770afa8572e0c4854b0a3dd33c48ea735",
+   "rev": "bb2fe27511eecfb25f50d45171dfdecd6d7a82e2",
    "name": "Parser",
    "manifestFile": "lake-manifest.json",
    "inputRev": "main",

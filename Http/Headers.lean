@@ -7,6 +7,7 @@ import Std
 import Http.Parser
 import Http.HeaderName
 
+open Parser Char
 open Http.Parser
 
 namespace Http
@@ -41,9 +42,9 @@ def parseHeader : Parser (HeaderName × String) := do
   ws
   let _ ← Parser.token ':'
   ws
-  let value ← capture <| Parser.dropMany <| Parser.tokenFilter (fun c => c != '\n')
+  let value ← captureString <| Parser.dropMany <| Parser.tokenFilter (fun c => c != '\n')
   ws
-  return (key, value.toString)
+  return (key, value.2.toString)
 
 def parse : Parser Headers := do
   let headers ← Array.foldl (λ map (k, v) => map.add k v) .empty <$>

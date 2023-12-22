@@ -100,7 +100,7 @@ structure URI where
   fragment : Option Fragment
 deriving Inhabited
 
-end Http open Parser
+end Http open Parser Char
 namespace Http
 
 open Http.Parser
@@ -136,28 +136,28 @@ URLs.
 -/
 
 def Scheme.parse : Parser Scheme := do
-  let str ← capture <| do
+  let str ← captureString <| do
     let _ ← tokenFilter (·.isAlpha)
     let _ ← dropMany <| tokenFilter (fun c => c.isAlphanum || c ∈ ['+', '-', '.'])
-  return Scheme.ofString str.toString |>.get!
+  return Scheme.ofString str.2.toString |>.get!
 
 def Authority.UserInfo.parse : Parser Authority.UserInfo := do
-  let user : Substring ←
-    capture <| dropMany <| tokenFilter (·.isAlphanum)
-  let pword : Option Substring ←
-    withBacktracking (token ':' *> some <$> (capture <| dropMany <| tokenFilter (·.isAlphanum)))
+  let user ←
+    captureString <| dropMany <| tokenFilter (·.isAlphanum)
+  let pword : Option (Unit × Substring) ←
+    withBacktracking (token ':' *> some <$> (captureString <| dropMany <| tokenFilter (·.isAlphanum)))
     <|> pure none
   let _ ← token '@'
-  return ⟨user.toString, pword.map (·.toString)⟩
+  return ⟨user.2.toString, pword.map (·.2.toString)⟩
 
 def Authority.Hostname.parse : Parser Authority.Hostname := do
-  let str ← capture <| dropMany <| tokenFilter (fun c => c.isAlphanum || c = '-' || c = '.')
-  return str.toString
+  let str ← captureString <| dropMany <| tokenFilter (fun c => c.isAlphanum || c = '-' || c = '.')
+  return str.2.toString
 
 def Authority.Port.parse : Parser Authority.Port := do
   let _ ← token ':'
-  let digs ← capture <| dropMany <| tokenFilter (·.isDigit)
-  match digs.toString.toNat? with
+  let digs ← captureString <| dropMany <| tokenFilter (·.isDigit)
+  match digs.2.toString.toNat? with
   | none =>
     throwUnexpectedWithMessage none s!"BUG: captured non-digit??: {digs}"
   | some num =>
@@ -197,7 +197,7 @@ def Path.pctEnc : Parser Char := do
 
 def Path.parse : Parser Path := do
   let parts ← takeMany <|
-    token '/' *> (capture <| dropMany <|
+    token '/' *> (captureString <| dropMany <|
       (tokenFilter (fun c =>
         if h : c.toNat < 256 then
           Path.allowedSegChars[c.toNat]'(Path.allowedSegChars_size ▸ h) > 0
@@ -207,17 +207,17 @@ def Path.parse : Parser Path := do
       <|>
       Path.pctEnc)
     )
-  return parts.map (·.toString)
+  return parts.map (·.2.toString)
 
 def Query.parse : Parser Query := do
   let _ ← token '?'
-  let str ← capture <| dropMany <| tokenFilter (fun c => c != '#')
-  return str.toString
+  let str ← captureString <| dropMany <| tokenFilter (fun c => c != '#')
+  return str.2.toString
 
 def Fragment.parse : Parser Fragment := do
   let _ ← token '#'
-  let str ← capture <| dropMany anyToken
-  return str.toString
+  let str ← captureString <| dropMany anyToken
+  return str.2.toString
 
 def parse : Parser URI := do
   let scheme ← option? <| withBacktracking do
