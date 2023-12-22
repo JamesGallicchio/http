@@ -1,4 +1,4 @@
 *.olean
-result*
+lake-packages
 lean_packages
 build
