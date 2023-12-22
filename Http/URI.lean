@@ -31,7 +31,7 @@ def ofString (s : String) : Option Scheme :=
   else
     none
 
-instance : Inhabited Scheme := ⟨ofString "a" |>.get (by simp only)⟩
+instance : Inhabited Scheme := ⟨ofString "a" |>.get rfl⟩
 
 def HTTP := ofString "http" |>.get!
 def HTTPS := ofString "https" |>.get!
@@ -185,7 +185,7 @@ def Path.allowedSegChars : ByteArray :=
     else 0
   )
 
-@[simp] theorem Path.allowedSegChars_size : Path.allowedSegChars.size = 256 := by
+theorem Path.allowedSegChars_size : Path.allowedSegChars.size = 256 := by
   simp [ByteArray.size, allowedSegChars]
 
 def Path.pctEnc : Parser Char := do
@@ -200,8 +200,7 @@ def Path.parse : Parser Path := do
     token '/' *> (capture <| dropMany <|
       (tokenFilter (fun c =>
         if h : c.toNat < 256 then
-          have := by rw [←Path.allowedSegChars_size] at h; exact h
-          Path.allowedSegChars[c.toNat] > 0
+          Path.allowedSegChars[c.toNat]'(Path.allowedSegChars_size ▸ h) > 0
         else
           false
       )
@@ -237,4 +236,4 @@ def fromString? (s : String) : Option URI :=
     if ss.isEmpty then some u else none
   | _ => none
 
-#eval fromString? "https://api.github.com" |>.map (·.appendPath #["hi"])
+-- #eval fromString? "https://api.github.com" |>.map (·.appendPath #["hi"])
