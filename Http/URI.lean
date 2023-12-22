@@ -235,5 +235,3 @@ def fromString? (s : String) : Option URI :=
   | .ok ss u =>
     if ss.isEmpty then some u else none
   | _ => none
-
--- #eval fromString? "https://api.github.com" |>.map (·.appendPath #["hi"])
