@@ -1,17 +1,6 @@
-/-  Copyright (C) 2023 The Http library contributors.
+/-  Copyright (C) 2023 The Http library contributors
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+    Authors: James Gallicchio
 -/
 
 import Lean
@@ -224,14 +213,14 @@ def Path.parse : Parser Path := do
 def Query.parse : Parser Query := do
   let _ ← token '?'
   let str ← capture <| dropMany <| tokenFilter (fun c => c != '#')
-  return str.toString 
+  return str.toString
 
 def Fragment.parse : Parser Fragment := do
   let _ ← token '#'
   let str ← capture <| dropMany anyToken
   return str.toString
 
-def parse : Parser URI := do  
+def parse : Parser URI := do
   let scheme ← option? <| withBacktracking do
     let res ← Scheme.parse
     let _ ← tokenArray #[':', '/', '/']

@@ -1,17 +1,6 @@
-/-  Copyright (C) 2023 The Http library contributors.
+/-  Copyright (C) 2023 The Http library contributors
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+    Authors: James Gallicchio
 -/
 
 import Std
@@ -51,7 +40,7 @@ def parseHeader : Parser (HeaderName × String) := do
   let key ← HeaderName.parse
   ws
   let _ ← Parser.token ':'
-  ws  
+  ws
   let value ← capture <| Parser.dropMany <| Parser.tokenFilter (fun c => c != '\n')
   ws
   return (key, value.toString)

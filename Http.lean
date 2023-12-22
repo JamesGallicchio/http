@@ -1,3 +1,6 @@
+/-  Copyright (C) 2023 The Http library contributors
+-/
+
 import Http.HeaderName
 import Http.Headers
 import Http.Request
