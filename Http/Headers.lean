@@ -42,7 +42,7 @@ def parseHeader : Parser (HeaderName × String) := do
   ws
   let _ ← Parser.token ':'
   ws
-  let value ← captureString <| Parser.dropMany <| Parser.tokenFilter (fun c => c != '\n')
+  let value ← captureStr <| Parser.dropMany <| Parser.tokenFilter (fun c => c != '\n')
   ws
   return (key, value.2.toString)
 

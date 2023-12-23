@@ -921,6 +921,6 @@ end Http.HeaderName open Parser Char open Http.Parser
 namespace Http.HeaderName
 
 def parse : Parser HeaderName := do
-  let str ← captureString <| dropMany1 (tokenFilter (fun c => Char.isAlphanum c ||
+  let str ← captureStr <| dropMany1 (tokenFilter (fun c => Char.isAlphanum c ||
             c ∈ ['-', '_', '!', '#', '$', '%', '&', '|', '*', '+', '.', '^', '"', '\'', '`']))
   return HeaderName.ofHeaderString str.2.toString

@@ -136,27 +136,27 @@ URLs.
 -/
 
 def Scheme.parse : Parser Scheme := do
-  let str ← captureString <| do
+  let str ← captureStr <| do
     let _ ← tokenFilter (·.isAlpha)
     let _ ← dropMany <| tokenFilter (fun c => c.isAlphanum || c ∈ ['+', '-', '.'])
   return Scheme.ofString str.2.toString |>.get!
 
 def Authority.UserInfo.parse : Parser Authority.UserInfo := do
   let user ←
-    captureString <| dropMany <| tokenFilter (·.isAlphanum)
+    captureStr <| dropMany <| tokenFilter (·.isAlphanum)
   let pword : Option (Unit × Substring) ←
-    withBacktracking (token ':' *> some <$> (captureString <| dropMany <| tokenFilter (·.isAlphanum)))
+    withBacktracking (token ':' *> some <$> (captureStr <| dropMany <| tokenFilter (·.isAlphanum)))
     <|> pure none
   let _ ← token '@'
   return ⟨user.2.toString, pword.map (·.2.toString)⟩
 
 def Authority.Hostname.parse : Parser Authority.Hostname := do
-  let str ← captureString <| dropMany <| tokenFilter (fun c => c.isAlphanum || c = '-' || c = '.')
+  let str ← captureStr <| dropMany <| tokenFilter (fun c => c.isAlphanum || c = '-' || c = '.')
   return str.2.toString
 
 def Authority.Port.parse : Parser Authority.Port := do
   let _ ← token ':'
-  let digs ← captureString <| dropMany <| tokenFilter (·.isDigit)
+  let digs ← captureStr <| dropMany <| tokenFilter (·.isDigit)
   match digs.2.toString.toNat? with
   | none =>
     throwUnexpectedWithMessage none s!"BUG: captured non-digit??: {digs}"
@@ -197,7 +197,7 @@ def Path.pctEnc : Parser Char := do
 
 def Path.parse : Parser Path := do
   let parts ← takeMany <|
-    token '/' *> (captureString <| dropMany <|
+    token '/' *> (captureStr <| dropMany <|
       (tokenFilter (fun c =>
         if h : c.toNat < 256 then
           Path.allowedSegChars[c.toNat]'(Path.allowedSegChars_size ▸ h) > 0
@@ -211,12 +211,12 @@ def Path.parse : Parser Path := do
 
 def Query.parse : Parser Query := do
   let _ ← token '?'
-  let str ← captureString <| dropMany <| tokenFilter (fun c => c != '#')
+  let str ← captureStr <| dropMany <| tokenFilter (fun c => c != '#')
   return str.2.toString
 
 def Fragment.parse : Parser Fragment := do
   let _ ← token '#'
-  let str ← captureString <| dropMany anyToken
+  let str ← captureStr <| dropMany anyToken
   return str.2.toString
 
 def parse : Parser URI := do
