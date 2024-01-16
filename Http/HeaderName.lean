@@ -3,6 +3,7 @@
     Authors: James Gallicchio
 -/
 
+import Lean
 import Std
 import Qq
 import Http.CaseInsString
